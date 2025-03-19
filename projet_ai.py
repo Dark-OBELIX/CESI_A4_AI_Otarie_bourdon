@@ -1,3 +1,5 @@
+import os
+os.system("cls")
 import pandas as pd
 import numpy as np
 import joblib
@@ -5,14 +7,11 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Perceptron
 from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
-import os
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import StratifiedKFold
 
 class AttritionModel:
     def __init__(self, data_path):
@@ -67,29 +66,32 @@ class AttritionModel:
     def train_decision_tree(self):
         dt_model = DecisionTreeClassifier()
         dt_model.fit(self.out_train, self.y_train)
+        mean_score = self.cross_validate_model(dt_model)
         model_dir = os.path.join(self.current_working_directory, "model")
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(dt_model, os.path.join(model_dir, "DecisionTree.model"))
         self.models["DecisionTree"] = dt_model
-        print(f"Modèle DecisionTree sauvegardé dans {model_dir}/DecisionTree.model")
+        print(f"Modèle DecisionTree sauvegardé dans {model_dir}/DecisionTree.model avec un score moyen de {mean_score}")
 
     def train_random_forest(self):
         rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
         rf_model.fit(self.out_train, self.y_train)
+        mean_score = self.cross_validate_model(rf_model)
         model_dir = os.path.join(self.current_working_directory, "model")
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(rf_model, os.path.join(model_dir, "RandomForest.model"))
         self.models["RandomForest"] = rf_model
-        print(f"Modèle RandomForest sauvegardé dans {model_dir}/RandomForest.model")
+        print(f"Modèle random forest sauvegardé dans {model_dir}/RandomForest.model avec un score moyen de {mean_score}")
 
     def train_perceptron(self):
         perceptron_model = Perceptron(eta0=0.001, max_iter=10000, penalty='l2', alpha=0.0001)
         perceptron_model.fit(self.out_train, self.y_train)
+        mean_score = self.cross_validate_model(perceptron_model)
         model_dir = os.path.join(self.current_working_directory, "model")
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(perceptron_model, os.path.join(model_dir, "Perceptron.model"))
         self.models["Perceptron"] = perceptron_model
-        print(f"Modèle Perceptron sauvegardé dans {model_dir}/Perceptron.model")
+        print(f"Modèle Perceptron sauvegardé dans {model_dir}/Perceptron.model avec un score moyen de {mean_score}")
 
     def re_train_perceptron(self):
         model_dir = os.path.join(self.current_working_directory, "model")
@@ -109,6 +111,13 @@ class AttritionModel:
         self.train_decision_tree()
         self.train_random_forest()
         self.train_perceptron()
+
+    def cross_validate_model(self, model, cv=5):
+        kf = KFold(n_splits=cv, shuffle=True, random_state=42)
+        scores = cross_val_score(model, self.out_train, self.y_train, cv=kf, scoring='accuracy')
+        print(f"Scores K-Fold Cross-Validation : {scores}")
+        print(f"Score moyen : {np.mean(scores)}")
+        return np.mean(scores)
 
     def evaluate_models(self):
         results = {}
