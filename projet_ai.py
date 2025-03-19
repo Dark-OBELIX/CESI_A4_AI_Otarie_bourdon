@@ -11,6 +11,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Perceptron
 from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score
 import os
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import StratifiedKFold
 
 class AttritionModel:
     def __init__(self, data_path):
@@ -108,36 +110,6 @@ class AttritionModel:
         results_df = pd.DataFrame(results).T
         print(results_df)
         return results_df
-        
-    def predict_new_data(self, new_data_path):
-        df = pd.read_excel(new_data_path)
-
-        pipeline_path = os.path.join(self.current_working_directory, "pipeline", "full_pipeline.pkl")
-        self.full_pipeline = joblib.load(pipeline_path)
-
-        df = df[self.numerical_columns + self.categorical_columns]
-
-        mapping = {
-            "Low": 1,
-            "Medium": 2,
-            "High": 3,
-            "Very High": 4
-        }
-        if "JobSatisfaction" in df.columns:
-            df["JobSatisfaction"] = df["JobSatisfaction"].map(mapping).fillna(0).astype(int)
-
-        new_data_prepared = self.full_pipeline.transform(df)
-        model_dir = os.path.join(self.current_working_directory, "model")
-        models_to_load = ["DecisionTree", "RandomForest", "Perceptron"]
-
-        self.models = {name: joblib.load(os.path.join(model_dir, f"{name}.model")) for name in models_to_load}
-
-        predictions = {}
-        for name, model in self.models.items():
-            predictions[name] = model.predict(new_data_prepared).tolist()
-            print(f'Prédictions avec {name}.model:', predictions[name])
-
-        return predictions
 
     def load_and_predict(self, model_name, new_data_path):
 
@@ -176,10 +148,11 @@ if __name__ == "__main__":
     model.split_data()
     model.build_pipeline()
     model.transform_data()
+    model.train_models()
 
     new_data_path = "data/add_data.xlsx"
-    model_name = "RandomForest"
-    predictions = model.load_and_predict(model_name, new_data_path)
+    models_name = ["RandomForest", "Perceptron", "DecisionTree"] # ["RandomForest", "Perceptron", "DecisionTree"]
     
-    if predictions:
+    for model_name in models_name:
+        predictions = model.load_and_predict(model_name, new_data_path)
         print(f"Prédictions du modèle {model_name}: {predictions}")
