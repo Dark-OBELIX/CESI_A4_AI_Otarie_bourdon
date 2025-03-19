@@ -33,7 +33,6 @@ class AttritionModel:
             self.X, self.y, test_size=test_size, random_state=random_state
         )
     
-
     def build_pipeline(self):
         num_pipeline = Pipeline([
             ('imputer', SimpleImputer(strategy='median')),
@@ -57,7 +56,6 @@ class AttritionModel:
         os.makedirs(pipeline_dir, exist_ok=True)
 
         joblib.dump(self.full_pipeline, os.path.join(pipeline_dir, "full_pipeline.pkl"))
-        print(f"Pipeline enregistré dans {pipeline_dir}/full_pipeline.pkl")
 
     def transform_data(self):
         self.full_pipeline.fit(self.X_train)
@@ -66,14 +64,21 @@ class AttritionModel:
         self.out_test = self.full_pipeline.transform(self.X_test)
     
     def train_models(self):
-        self.models['tree'] = DecisionTreeClassifier()
-        self.models['forest'] = RandomForestClassifier(n_estimators=100, random_state=42)
-        self.models['perceptron'] = Perceptron(eta0=0.001, max_iter=10000, penalty='l2', alpha=0.0001)
-        
-        for name, model in self.models.items():
+        modele_dir = os.path.join(self.current_working_directory, "model")
+        os.makedirs(modele_dir, exist_ok=True)
+
+        models = {
+            "DecisionTree": DecisionTreeClassifier(),
+            "RandomForest": RandomForestClassifier(n_estimators=100, random_state=42),
+            "Perceptron": Perceptron(eta0=0.001, max_iter=10000, penalty='l2', alpha=0.0001)
+        }
+
+        for name, model in models.items():
             model.fit(self.out_train, self.y_train)
-            joblib.dump(model, os.path.join(self.current_working_directory, f'{name}.model'))
-    
+            joblib.dump(model, os.path.join(modele_dir, f"{name}.model"))  # 📥 Sauvegarde du modèle
+            print(f"Modèle {name} sauvegardé dans {modele_dir}/{name}.model")
+        self.models = models
+
     def evaluate_models(self):
         results = {}
         for name, model in self.models.items():
@@ -92,10 +97,11 @@ class AttritionModel:
     def predict_new_data(self, new_data_path):
         df = pd.read_excel(new_data_path)
 
-        # Vérifier que les colonnes attendues sont bien présentes
+        pipeline_path = os.path.join(self.current_working_directory, "pipeline", "full_pipeline.pkl")
+        self.full_pipeline = joblib.load(pipeline_path)
+
         df = df[self.numerical_columns + self.categorical_columns]
 
-        # Appliquer le mapping pour JobSatisfaction
         mapping = {
             "Low": 1,
             "Medium": 2,
@@ -105,10 +111,13 @@ class AttritionModel:
         if "JobSatisfaction" in df.columns:
             df["JobSatisfaction"] = df["JobSatisfaction"].map(mapping).fillna(0).astype(int)
 
-        # Transformation des nouvelles données
         new_data_prepared = self.full_pipeline.transform(df)
 
-        # Prédictions avec les modèles chargés
+        modele_dir = os.path.join(self.current_working_directory, "modele")
+        models_to_load = ["DecisionTree", "RandomForest", "Perceptron"]
+
+        self.models = {name: joblib.load(os.path.join(modele_dir, f"{name}.model")) for name in models_to_load}
+
         predictions = {}
         for name, model in self.models.items():
             predictions[name] = model.predict(new_data_prepared).tolist()
@@ -118,7 +127,7 @@ class AttritionModel:
 
 
 if __name__ == "__main__":
-    data_path = "C:/Users/hugol/Downloads/data_HR.xlsx"
+    data_path = "data/data_HR.xlsx"
     model = AttritionModel(data_path)
     model.load_data()
     model.split_data()
@@ -127,5 +136,5 @@ if __name__ == "__main__":
     model.train_models()
     model.evaluate_models()
     
-    new_data_path = "C:/Users/hugol/Downloads/add_data.xlsx"
+    new_data_path = "data/add_data.xlsx"
     model.predict_new_data(new_data_path)
