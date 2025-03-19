@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Perceptron
-from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 import os
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import StratifiedKFold
@@ -115,14 +115,15 @@ class AttritionModel:
         for name, model in self.models.items():
             y_pred = model.predict(self.out_test)
             results[name] = {
-                'RMSE': np.sqrt(mean_squared_error(self.y_test, y_pred)),
                 'Accuracy': accuracy_score(self.y_test, y_pred),
                 'Precision': precision_score(self.y_test, y_pred),
                 'Recall': recall_score(self.y_test, y_pred),
-                'F1 Score': f1_score(self.y_test, y_pred)
+                'AUC':roc_auc_score(self.y_test, y_pred),
+                'F1 Score': f1_score(self.y_test, y_pred),
+                'Conf matrix': confusion_matrix(self.y_test, y_pred)
             }
+
         results_df = pd.DataFrame(results).T
-        print(results_df)
         return results_df
 
     def load_and_predict(self, model_name, new_data_path):
@@ -163,7 +164,9 @@ if __name__ == "__main__":
     model.build_pipeline()
     model.transform_data()
     model.train_models()
- 
+    t = model.evaluate_models()
+    print(t)
+
     new_data_path = "data/add_data.xlsx"
     models_name = ["Perceptron"] # ["RandomForest", "Perceptron", "DecisionTree"]
     
