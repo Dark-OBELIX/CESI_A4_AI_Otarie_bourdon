@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Perceptron
-from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve, auc
 
 class AttritionModel:
     def __init__(self, data_path):
@@ -21,6 +21,7 @@ class AttritionModel:
         self.categorical_columns = []
         self.full_pipeline = None
         self.models = {}
+        self.tab_mean = []
     
     def load_data(self):
         df = pd.read_excel(self.data_path)
@@ -57,7 +58,6 @@ class AttritionModel:
         self.full_pipeline.fit(self.X_train)
         pipeline_dir = os.path.join(self.current_working_directory, "pipeline")
         os.makedirs(pipeline_dir, exist_ok=True)
-
         joblib.dump(self.full_pipeline, os.path.join(pipeline_dir, "full_pipeline.pkl"))
         joblib.dump(self.full_pipeline, os.path.join(self.current_working_directory, 'full_pipeline.pkl'))
         self.out_train = self.full_pipeline.transform(self.X_train)
@@ -67,6 +67,7 @@ class AttritionModel:
         dt_model = DecisionTreeClassifier()
         dt_model.fit(self.out_train, self.y_train)
         mean_score = self.cross_validate_model(dt_model)
+        self.tab_mean.append(mean_score)
         model_dir = os.path.join(self.current_working_directory, "model")
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(dt_model, os.path.join(model_dir, "DecisionTree.model"))
@@ -77,6 +78,7 @@ class AttritionModel:
         rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
         rf_model.fit(self.out_train, self.y_train)
         mean_score = self.cross_validate_model(rf_model)
+        self.tab_mean.append(mean_score)
         model_dir = os.path.join(self.current_working_directory, "model")
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(rf_model, os.path.join(model_dir, "RandomForest.model"))
@@ -87,6 +89,7 @@ class AttritionModel:
         perceptron_model = Perceptron(eta0=0.001, max_iter=10000, penalty='l2', alpha=0.0001)
         perceptron_model.fit(self.out_train, self.y_train)
         mean_score = self.cross_validate_model(perceptron_model)
+        self.tab_mean.append(mean_score)
         model_dir = os.path.join(self.current_working_directory, "model")
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(perceptron_model, os.path.join(model_dir, "Perceptron.model"))
@@ -95,7 +98,6 @@ class AttritionModel:
 
     def re_train_perceptron(self):
         model_dir = os.path.join(self.current_working_directory, "model")
-
         if os.path.isdir(os.path.join(model_dir, "Perceptron_retrain.model")):
             pathtoPerceptron_model = os.path.join(model_dir, "Perceptron_retrain.model")
         else:
@@ -115,22 +117,33 @@ class AttritionModel:
     def cross_validate_model(self, model, cv=5):
         kf = KFold(n_splits=cv, shuffle=True, random_state=42)
         scores = cross_val_score(model, self.out_train, self.y_train, cv=kf, scoring='accuracy')
-        print(f"Scores K-Fold Cross-Validation : {scores}")
-        print(f"Score moyen : {np.mean(scores)}")
+        #print(f"Scores K-Fold Cross-Validation : {scores}")
+        #print(f"Score moyen : {np.mean(scores)}")
         return np.mean(scores)
 
     def evaluate_models(self):
         results = {}
+        i = 0
         for name, model in self.models.items():
             y_pred = model.predict(self.out_test)
+
+            if name == 'Perceptron':
+                self.y_probas = model.decision_function(self.out_test)
+            else:
+                self.y_probas = model.predict_proba(self.out_test)
+                self.y_probas = self.y_probas[:, 1]
+
+            self.fpr, self.tpr, self.thresholds = roc_curve(self.y_test, self.y_probas)
             results[name] = {
                 'Accuracy': accuracy_score(self.y_test, y_pred),
                 'Precision': precision_score(self.y_test, y_pred),
                 'Recall': recall_score(self.y_test, y_pred),
-                'AUC':roc_auc_score(self.y_test, y_pred),
+                'AUC':auc(self.fpr, self.tpr),
                 'F1 Score': f1_score(self.y_test, y_pred),
-                'Conf matrix': confusion_matrix(self.y_test, y_pred)
+                'Conf matrix': confusion_matrix(self.y_test, y_pred),
+                'mean_cross_validation':  self.tab_mean[i]
             }
+            i=+1
 
         results_df = pd.DataFrame(results).T
         return results_df
@@ -173,9 +186,18 @@ if __name__ == "__main__":
     model.build_pipeline()
     model.transform_data()
     model.train_models()
-    t = model.evaluate_models()
-    print(t)
+    print("")
+    tab_evaluation = model.evaluate_models()
+    print(tab_evaluation)
+    print("")
+    new_data_path = "data/add_data.xlsx"
+    models_name = ["RandomForest", "Perceptron", "DecisionTree"]
+    
+    for model_name in models_name:
+        predictions = model.load_and_predict(model_name, new_data_path)
+        print(f"Prédictions du modèle {model_name}: {predictions}")
 
+def launch_teswt():
     new_data_path = "data/add_data.xlsx"
     models_name = ["Perceptron"] # ["RandomForest", "Perceptron", "DecisionTree"]
     
