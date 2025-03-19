@@ -91,6 +91,20 @@ class AttritionModel:
         self.models["Perceptron"] = perceptron_model
         print(f"Modèle Perceptron sauvegardé dans {model_dir}/Perceptron.model")
 
+    def re_train_perceptron(self):
+        model_dir = os.path.join(self.current_working_directory, "model")
+
+        if os.path.isdir(os.path.join(model_dir, "Perceptron_retrain.model")):
+            pathtoPerceptron_model = os.path.join(model_dir, "Perceptron_retrain.model")
+        else:
+            pathtoPerceptron_model = os.path.join(model_dir, "Perceptron.model")
+        perceptron_model = joblib.load( pathtoPerceptron_model)
+        perceptron_model.partial_fit(self.out_train, self.y_train)
+        os.makedirs(model_dir, exist_ok=True)
+        joblib.dump(perceptron_model, os.path.join(model_dir, "Perceptron_retrain.model"))
+        self.models["Perceptron"] = perceptron_model
+        print(f"Modèle Perceptron sauvegardé dans {model_dir}/Perceptron_retrain.model")
+
     def train_models(self):
         self.train_decision_tree()
         self.train_random_forest()
@@ -149,9 +163,16 @@ if __name__ == "__main__":
     model.build_pipeline()
     model.transform_data()
     model.train_models()
-
+ 
     new_data_path = "data/add_data.xlsx"
-    models_name = ["RandomForest", "Perceptron", "DecisionTree"] # ["RandomForest", "Perceptron", "DecisionTree"]
+    models_name = ["Perceptron"] # ["RandomForest", "Perceptron", "DecisionTree"]
+    
+    for model_name in models_name:
+        predictions = model.load_and_predict(model_name, new_data_path)
+        print(f"Prédictions du modèle {model_name}: {predictions}")
+
+    model.re_train_perceptron()
+    models_name = ["Perceptron"] # ["RandomForest", "Perceptron", "DecisionTree"]
     
     for model_name in models_name:
         predictions = model.load_and_predict(model_name, new_data_path)
