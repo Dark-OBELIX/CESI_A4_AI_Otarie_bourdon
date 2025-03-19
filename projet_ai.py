@@ -22,7 +22,7 @@ class AttritionModel:
         self.models = {}
     
     def load_data(self):
-        df = pd.read_excel(self.data_path)
+        df = pd.read_excel(self.data_   path)
         self.X = df.drop(columns=['EmployeeNumber', 'Attrition', 'Over18', 'EmployeeCount'], axis=1)
         self.y = df['Attrition'].map({'Yes': 1, 'No': 0})
         self.numerical_columns = self.X.select_dtypes(include=['float64', 'int64']).columns.tolist()
@@ -52,13 +52,14 @@ class AttritionModel:
             ('cat', cat_pipeline, self.categorical_columns)
         ])
 
+
+
+    def transform_data(self):
+        self.full_pipeline.fit(self.X_train)
         pipeline_dir = os.path.join(self.current_working_directory, "pipeline")
         os.makedirs(pipeline_dir, exist_ok=True)
 
         joblib.dump(self.full_pipeline, os.path.join(pipeline_dir, "full_pipeline.pkl"))
-
-    def transform_data(self):
-        self.full_pipeline.fit(self.X_train)
         joblib.dump(self.full_pipeline, os.path.join(self.current_working_directory, 'full_pipeline.pkl'))
         self.out_train = self.full_pipeline.transform(self.X_train)
         self.out_test = self.full_pipeline.transform(self.X_test)
@@ -75,7 +76,7 @@ class AttritionModel:
 
         for name, model in models.items():
             model.fit(self.out_train, self.y_train)
-            joblib.dump(model, os.path.join(modele_dir, f"{name}.model"))  # 📥 Sauvegarde du modèle
+            joblib.dump(model, os.path.join(modele_dir, f"{name}.model"))
             print(f"Modèle {name} sauvegardé dans {modele_dir}/{name}.model")
         self.models = models
 
@@ -112,8 +113,7 @@ class AttritionModel:
             df["JobSatisfaction"] = df["JobSatisfaction"].map(mapping).fillna(0).astype(int)
 
         new_data_prepared = self.full_pipeline.transform(df)
-
-        modele_dir = os.path.join(self.current_working_directory, "modele")
+        modele_dir = os.path.join(self.current_working_directory, "model")
         models_to_load = ["DecisionTree", "RandomForest", "Perceptron"]
 
         self.models = {name: joblib.load(os.path.join(modele_dir, f"{name}.model")) for name in models_to_load}
