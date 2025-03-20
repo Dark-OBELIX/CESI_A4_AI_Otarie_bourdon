@@ -59,7 +59,6 @@ class AttritionModel:
         pipeline_dir = os.path.join(self.current_working_directory, "pipeline")
         os.makedirs(pipeline_dir, exist_ok=True)
         joblib.dump(self.full_pipeline, os.path.join(pipeline_dir, "full_pipeline.pkl"))
-        joblib.dump(self.full_pipeline, os.path.join(self.current_working_directory, 'full_pipeline.pkl'))
         self.out_train = self.full_pipeline.transform(self.X_train)
         self.out_test = self.full_pipeline.transform(self.X_test)
     
@@ -72,7 +71,7 @@ class AttritionModel:
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(dt_model, os.path.join(model_dir, "DecisionTree.model"))
         self.models["DecisionTree"] = dt_model
-        print(f"Modèle DecisionTree sauvegardé dans {model_dir}/DecisionTree.model avec un score moyen de {mean_score}")
+        #print(f"Modèle DecisionTree sauvegardé dans {model_dir}/DecisionTree.model avec un score moyen de {mean_score}")
 
     def train_random_forest(self):
         rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -83,7 +82,7 @@ class AttritionModel:
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(rf_model, os.path.join(model_dir, "RandomForest.model"))
         self.models["RandomForest"] = rf_model
-        print(f"Modèle random forest sauvegardé dans {model_dir}/RandomForest.model avec un score moyen de {mean_score}")
+        #print(f"Modèle random forest sauvegardé dans {model_dir}/RandomForest.model avec un score moyen de {mean_score}")
 
     def train_perceptron(self):
         perceptron_model = Perceptron(eta0=0.001, max_iter=10000, penalty='l2', alpha=0.0001)
@@ -94,20 +93,20 @@ class AttritionModel:
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(perceptron_model, os.path.join(model_dir, "Perceptron.model"))
         self.models["Perceptron"] = perceptron_model
-        print(f"Modèle Perceptron sauvegardé dans {model_dir}/Perceptron.model avec un score moyen de {mean_score}")
+        #print(f"Modèle Perceptron sauvegardé dans {model_dir}/Perceptron.model avec un score moyen de {mean_score}")
 
     def re_train_perceptron(self):
         model_dir = os.path.join(self.current_working_directory, "model")
         if os.path.isdir(os.path.join(model_dir, "Perceptron_retrain.model")):
-            pathtoPerceptron_model = os.path.join(model_dir, "Perceptron_retrain.model")
+            pathto_perceptron_model = os.path.join(model_dir, "Perceptron_retrain.model")
         else:
-            pathtoPerceptron_model = os.path.join(model_dir, "Perceptron.model")
-        perceptron_model = joblib.load( pathtoPerceptron_model)
+            pathto_perceptron_model = os.path.join(model_dir, "Perceptron.model")
+        perceptron_model = joblib.load( pathto_perceptron_model)
         perceptron_model.partial_fit(self.out_train, self.y_train)
         os.makedirs(model_dir, exist_ok=True)
         joblib.dump(perceptron_model, os.path.join(model_dir, "Perceptron_retrain.model"))
         self.models["Perceptron"] = perceptron_model
-        print(f"Modèle Perceptron sauvegardé dans {model_dir}/Perceptron_retrain.model")
+        #print(f"Modèle Perceptron sauvegardé dans {model_dir}/Perceptron_retrain.model")
 
     def train_models(self):
         self.train_decision_tree()
@@ -158,7 +157,7 @@ class AttritionModel:
             return None
 
         model = joblib.load(model_path)
-        print(f"Modèle {model_name} chargé à partir de {model_path}")
+       # print(f"Modèle {model_name} chargé à partir de {model_path}")
 
         df = pd.read_excel(new_data_path)
         df = df[self.numerical_columns + self.categorical_columns]
@@ -197,7 +196,7 @@ if __name__ == "__main__":
         predictions = model.load_and_predict(model_name, new_data_path)
         print(f"Prédictions du modèle {model_name}: {predictions}")
 
-def launch_teswt():
+def launch_test():
     new_data_path = "data/add_data.xlsx"
     models_name = ["Perceptron"] # ["RandomForest", "Perceptron", "DecisionTree"]
     
